@@ -108,7 +108,7 @@ func keep() (i int) {
 func loopOn(deleteDate time.Time, from int64, t []*twitter.Tweet) {
 	for _, tweet := range t {
 		c := tweet.CreatedAt
-		if tweet.CreatedAt.After(deleteDate) || (from > 0 && from > tweet.ID) {
+		if c.After(deleteDate) || (from > 0 && from > tweet.ID) {
 			y, m, d := c.Year(), c.Month(), c.Day()
 			msg := "skipping %d from %d/%02d/%02d"
 			if tweet.CreatedAt.After(deleteDate) {
