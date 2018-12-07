@@ -71,17 +71,14 @@ func (a *API) GetFromFile(f string) (t Tweets, err error) {
 
 // GetFromTimeline pulls the Tweets from the Timeline
 func (a *API) GetFromTimeline(handle string) (tweets Tweets, err error) {
-	struid, err := a.GetUID(handle)
+	uid, err := a.GetUID(handle)
 	if err != nil {
 		return
 	}
 
-	uid := strconv.FormatInt(struid, 10)
+	struid := strconv.FormatInt(uid, 10)
 	t, err := a.upstream.GetUserTimeline(url.Values{
-		"trim_user":       []string{"1"},
-		"exclude_replies": []string{"0"},
 		"include_rts":     []string{"1"},
-		"user_id":         []string{uid},
 		"count": []string{
 			"200",
 		},
@@ -100,20 +97,31 @@ func (a *API) GetFromTimeline(handle string) (tweets Tweets, err error) {
 	return
 }
 
-// GetUID gets the user
+// GetUser gets the user
+func (a *API) GetUser(handle string) (*User, error) {
+	u, err := a.upstream.GetUsersLookup(handle, url.Values{})
+	if err != nil && len(u) > 1 {
+		err = fmt.Errorf("too many users for %s",
+			handle)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return (&User{
+		upstream: &u[0],
+	}).Setup(), nil
+}
+
+// GetUID gets the user UID
 func (a *API) GetUID(handle string) (i int64, err error) {
-	user, err := a.upstream.GetUsersLookup(handle, url.Values{})
+	u, err := a.GetUser(handle)
 	if err != nil {
 		return
 	}
 
-	if len(user) > 1 {
-		// I don't understand how this can happen?
-		err = fmt.Errorf("too many users for %s", handle)
-		return
-	}
-
-	i = user[0].Id
+	i = u.UID
 	return
 }
 
