@@ -1,0 +1,28 @@
+language: go
+after_success: script/report
+before_install: ["go mod download"]
+before_script: script/report before
+script: script/test
+sudo: false
+env:
+  global:
+    - GO15VENDOREXPERIMENT=1
+    - GO111MODULE=on
+    # --
+    # Make sure you run travis encrypt
+    # CC_TEST_REPORTER_ID=[key] before commiting this
+    # Because this has coverage!
+    #--
+go:
+  - "1.11"
+matrix:
+  fast_finish: true
+notifications:
+  email:
+    recipients:
+      - jordon@envygeeks.io
+    on_success: change
+    on_failure: change
+branches:
+  only:
+    - master
