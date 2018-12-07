@@ -78,7 +78,10 @@ func (a *API) GetFromTimeline(handle string) (tweets Tweets, err error) {
 
 	struid := strconv.FormatInt(uid, 10)
 	t, err := a.upstream.GetUserTimeline(url.Values{
+		"user_id":         []string{struid},
 		"include_rts":     []string{"1"},
+		"exclude_replies": []string{"0"},
+		"trim_user":       []string{"1"},
 		"count": []string{
 			"200",
 		},
