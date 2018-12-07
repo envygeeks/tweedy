@@ -1,3 +1,6 @@
+[![Code Climate](https://img.shields.io/codeclimate/maintainability/envygeeks/tweedy.svg?style=for-the-badge)](https://codeclimate.com/github/envygeeks/tweedy/maintainability)
+[![GitHub release](https://img.shields.io/github/release/envygeeks/tweedy.svg?style=for-the-badge)](http://github.com/envygeeks/tweedy/releases/latest)
+
 # Tweedy
 
 Twitter Delete Yourself is a Go application for deleting your Tweets, while preserving part of your history for n amount of time.  It also supports consuming a Twitter JSON backup once you convert the `tweet.js` to `tweet.json` by opening it up, removing the variable, and leaving only the array.
