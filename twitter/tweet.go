@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ChimeraCoder/anaconda"
+	"github.com/envygeeks/tweedy/umap"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,29 +25,34 @@ type Tweet struct {
 	api          *API
 }
 
+var (
+	tweetUpstreamMap = umap.Map{
+		"FullText":     "FullText",
+		"CreatedAtStr": "CreatedAt",
+		"Id":           "ID",
+	}
+)
+
 // Tweets are Tweet
 type Tweets []*Tweet
 
 // Setup does constructor stuff.
 func (t *Tweet) Setup() *Tweet {
+	var err error
+
 	if t.upstream != nil {
-		t.ID = t.upstream.Id
-		t.FullText = t.upstream.FullText
-		t.CreatedAtStr = t.upstream.CreatedAt
-		tt, err := t.upstream.CreatedAtTime()
-		t.CreatedAt = tt
-
-		if err != nil {
-			panic(err)
+		err = umap.MapValues(t.upstream, t, tweetUpstreamMap)
+		if err == nil {
+			t.CreatedAt, err = t.upstream.
+				CreatedAtTime()
 		}
-
-		return t
+	} else {
+		t.CreatedAt, err = time.Parse(time.RubyDate,
+			t.CreatedAtStr)
 	}
 
-	tt, err := time.Parse(time.RubyDate, t.CreatedAtStr)
-	t.CreatedAt = tt
 	if err != nil {
-		panic(err)
+		logrus.Fatalln(err)
 	}
 
 	return t

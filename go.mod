@@ -11,5 +11,6 @@ require (
 	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/stretchr/testify v1.2.2
 	golang.org/x/net v0.0.0-20181201002055-351d144fa1fc // indirect
 )
