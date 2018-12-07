@@ -131,13 +131,6 @@ func (a *API) Get(i int64) (*Tweet, error) {
 	}).Setup(), nil
 }
 
-// Delete a Tweet
-func (a *API) Delete(i int64) error {
-	logrus.Infof("deleting %d", i)
-	_, err := a.upstream.DeleteTweet(i, true)
-	return err
-}
-
 // New gets the keys, and then returns an API
 // created by Anaconda.  If you wish to do more advanced
 // stuff than what I'm doing, hit up their docs
