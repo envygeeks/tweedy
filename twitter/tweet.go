@@ -27,9 +27,9 @@ type Tweet struct {
 
 var (
 	tweetUpstreamMap = umap.Map{
-		"FullText":     "FullText",
-		"CreatedAtStr": "CreatedAt",
-		"Id":           "ID",
+		"FullText":  "FullText",
+		"CreatedAt": "CreatedAtStr",
+		"Id":        "ID",
 	}
 )
 
