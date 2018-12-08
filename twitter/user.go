@@ -26,8 +26,9 @@ type Likes *[]Tweet
 var (
 	userUpstreamMap = umap.Map{
 		"Email":           "EMail",
-		"FavouritesCount": "LikesCount",
 		"StatusesCount":   "TweetCount",
+		"FavouritesCount": "LikesCount",
+		"ScreenName":      "ScreenName",
 		"Name":            "Name",
 		"Id":              "UID",
 	}
