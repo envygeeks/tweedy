@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/ChimeraCoder/anaconda"
@@ -36,10 +37,9 @@ var (
 
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
-	mainCmd.Flags().StringVarP(&args.User, "user", "u", "", "The user")
 	mainCmd.Flags().IntVarP(&args.From, "from", "r", 0, "Delete Tweets from ID")
 	mainCmd.Flags().BoolVarP(&args.Verbose, "verbose", "1", false, "Verbose output")
-	mainCmd.Flags().BoolVarP(&args.Silent, "silent", "0", true, "Silent output (Warnings only)")
+	mainCmd.Flags().StringVarP(&args.User, "user", "u", "", "User handle, or UID")
 	mainCmd.Flags().IntVarP(&args.Keep, "keep", "k", 3, "Days to keep")
 	mainCmd.Flags().StringVarP(&args.File, "file", "f",
 		"", "Tweets JSON file")
@@ -164,7 +164,17 @@ func runCmd(*cobra.Command, []string) {
 		tweets, err = api.GetFromFile(f)
 	} else {
 		if u := args.User; u != "" {
-			tweets, err = api.GetFromTimeline(u)
+			if uid, fail := strconv.Atoi(u); fail == nil {
+				tweets, err = api.GetFromTimeline(
+					twitter.UserQuery{
+						UID: int64(uid),
+					})
+			} else {
+				tweets, err = api.GetFromTimeline(
+					twitter.UserQuery{
+						Handle: u,
+					})
+			}
 		} else {
 			// We need one or the other.
 			log.Fatalf("no user provided, must provide %s, or %s",

@@ -15,6 +15,7 @@ type User struct {
 	LikesCount int
 	TweetCount int64
 	upstream   *anaconda.User
+	Handle     string
 	EMail      string
 	Name       string
 	UID        int64
@@ -28,11 +29,25 @@ var (
 		"Email":           "EMail",
 		"StatusesCount":   "TweetCount",
 		"FavouritesCount": "LikesCount",
-		"ScreenName":      "ScreenName",
+		"ScreenName":      "Handle",
 		"Name":            "Name",
 		"Id":              "UID",
 	}
 )
+
+// UserQuery is used in cases where
+// we will query an API that can take
+// either a UID, or a Handle.
+//
+//   func MyFunc(u UserQuery) {
+//     if u.Handle != ""
+//       // Get UID, and do work.
+//     }
+//   }
+type UserQuery struct {
+	Handle string
+	UID    int64
+}
 
 // Setup the user
 func (u *User) Setup() *User {

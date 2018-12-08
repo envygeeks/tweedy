@@ -70,13 +70,21 @@ func (a *API) GetFromFile(f string) (t Tweets, err error) {
 }
 
 // GetFromTimeline pulls the Tweets from the Timeline
-func (a *API) GetFromTimeline(handle string) (tweets Tweets, err error) {
-	uid, err := a.GetUID(handle)
+// UserQuery is just a struct that holds either UID, or a
+// handle, and allows you to decide which you want
+//
+// 	GetFromTimeline(&UserQuery{UID: 123456789 })
+// 	GetFromTimeline(&UserQuery{
+//   		Handle: "myTwitterHandle"
+// 	})
+//
+func (a *API) GetFromTimeline(u UserQuery) (tweets Tweets, err error) {
+	user, err := a.GetUser(u)
 	if err != nil {
 		return
 	}
 
-	struid := strconv.FormatInt(uid, 10)
+	struid := strconv.FormatInt(user.UID, 10)
 	t, err := a.upstream.GetUserTimeline(url.Values{
 		"user_id":         []string{struid},
 		"include_rts":     []string{"1"},
@@ -100,31 +108,40 @@ func (a *API) GetFromTimeline(handle string) (tweets Tweets, err error) {
 	return
 }
 
-// GetUser gets the user
-func (a *API) GetUser(handle string) (*User, error) {
-	u, err := a.upstream.GetUsersLookup(handle, url.Values{})
-	if err != nil && len(u) > 1 {
-		err = fmt.Errorf("too many users for %s",
-			handle)
-	}
-
+func uByUID(a *API, id int64) (*User, error) {
+	upstream, err := a.upstream.GetUsersShowById(id, url.Values{})
 	if err != nil {
 		return nil, err
 	}
 
-	return (&User{
-		upstream: &u[0],
-	}).Setup(), nil
+	u := (&User{
+		upstream: &upstream,
+	}).Setup() // *User
+	return u, nil
 }
 
-// GetUID gets the user UID
-func (a *API) GetUID(handle string) (i int64, err error) {
-	u, err := a.GetUser(handle)
+func uByHandle(a *API, handle string) (*User, error) {
+	upstream, err := a.upstream.GetUsersShow(handle, url.Values{})
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	i = u.UID
+	u := (&User{
+		upstream: &upstream,
+	}).Setup() // *User
+	return u, nil
+}
+
+// GetUser gets the user
+func (a *API) GetUser(uq UserQuery) (u *User, err error) {
+	if uq.UID == 0 && uq.Handle != "" {
+		u, err = uByHandle(a, uq.Handle)
+	} else {
+		if uq.UID != 0 {
+			u, err = uByUID(a, uq.UID)
+		}
+	}
+
 	return
 }
 
