@@ -27,40 +27,47 @@ func valueOf(i interface{}) (v reflect.Value) {
 }
 
 // MapValues allows you to map upstream
-func MapValues(from interface{}, to interface{}, m Map) (err error) {
-	f, t := valueOf(from), valueOf(to)
-	if f.Kind() != reflect.Struct || t.Kind() != reflect.Struct {
+func MapValues(_from, _to interface{}, m Map) (err error) {
+	from, to := valueOf(_from), valueOf(_to)
+	if from.Kind() != reflect.Struct || to.Kind() != reflect.Struct {
 		return fmt.Errorf("%q, and %q must be structs",
 			"from", "to")
 	}
 
-	for fk, tk := range m {
-		ff, tf := f.FieldByName(fk), t.FieldByName(tk)
-		if tf.Kind() != ff.Kind() {
+	for fromKey, toKey := range m {
+		fromField, toField := from.FieldByName(fromKey), to.FieldByName(toKey)
+		if toField.Kind() != fromField.Kind() {
 			return fmt.Errorf("%s(%s) mismatches %s(%s)",
-				fk, ff.Kind(), tk, tf.Kind())
+				fromKey, fromField.Kind(), toKey,
+				toField.Kind())
 		}
 
-		switch ff.Kind() {
+		switch fromField.Kind() {
 
-		// True, False
+		/**
+		 * True, False
+		 * Duh
+		 */
 		case reflect.Bool:
-			v := ff.Bool()
-			tf.SetBool(v)
+			toField.SetBool(fromField.Bool())
 			continue
 
-		// Works for all types of int.. magic 🤷‍♂️
+		/**
+		 * Works for all types of int..
+		 * It's magic 🤷‍♂️
+		 */
 		case reflect.Int8, reflect.Int16, reflect.Int32,
 			reflect.Int64, reflect.Int:
 
-			v := ff.Int()
-			tf.SetInt(v)
+			toField.SetInt(fromField.Int())
 			continue
 
-		// Strings
+		/**
+		 * Strings
+		 * Duh
+		 */
 		case reflect.String:
-			v := ff.String()
-			tf.SetString(v)
+			toField.SetString(fromField.String())
 			continue
 
 		/**
@@ -71,7 +78,8 @@ func MapValues(from interface{}, to interface{}, m Map) (err error) {
 		default:
 			// I don't support every type bruv.
 			return fmt.Errorf("unsupported %s(%s), %s(%s)",
-				fk, ff.Kind(), tk, tf.Kind())
+				fromKey, fromField.Kind(), toKey,
+				toField.Kind())
 		}
 	}
 
