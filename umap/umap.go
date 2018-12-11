@@ -9,47 +9,86 @@ import (
 	"reflect"
 )
 
-// Map allows you to k,k map from an
-// upstream struct into a downstream cleaned
-// struct, without much labor
-type Map map[string]string
+// KeyMap is the key -> key map between
+// the two structs we are mapping out from
+// upstream into the downstream.
+type KeyMap map[string]string
 
-// valueOf gives back the reflect.Value, but
-// if it happens to be a ptr, we'll run extra
-// step and get the reflect.Value of the ptr
-func valueOf(i interface{}) (v reflect.Value) {
-	v = reflect.ValueOf(i)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+// structOK makes sure the value is a struct
+// we can only map struct to struct, mostly because
+// we only want to map struct to struct
+func structOK(v reflect.Value) error {
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("input must be a struct")
 	}
 
+	return nil
+}
+
+// nPtrOf converts a Ptr to the actual
+func nPtrOf(v reflect.Value) reflect.Value {
+	if v.Kind() == reflect.Ptr {
+		return v.Elem()
+	}
+
+	return v
+}
+
+// valueOf gives back the reflect.Value of the interface
+func valueOf(i interface{}) (v reflect.Value, err error) {
+	v, ok := i.(reflect.Value)
+	if !ok {
+		v = reflect.ValueOf(i)
+	}
+
+	v = nPtrOf(v)
+	err = structOK(v)
 	return
 }
 
-// MapValues allows you to map upstream
-func MapValues(_from, _to interface{}, m Map) (err error) {
-	from, to := valueOf(_from), valueOf(_to)
-	if from.Kind() != reflect.Struct || to.Kind() != reflect.Struct {
-		return fmt.Errorf("%q, and %q must be structs",
-			"from", "to")
+// Map maps an upstream struct from a downstream struct
+// containting an upstream field (as a wrapper) into the
+// named downstream that it's mapping upstream.
+//
+// 	type MyStruct struct { upstream Upstream, key string }
+//	type Upstream struct { key string, val string }
+//	type UpstreamMap map[string]string {
+//		"key" => "key"
+//	}
+//
+//	Map(&MyStruct{
+// 		upstream: &Upstream{
+//			key: "hello",
+//			val: "world",
+//		}
+//	}, UpstreamMap)
+func Map(in interface{}, keymap KeyMap) (err error) {
+	var upstream, downstream reflect.Value
+	downstream, err = valueOf(in)
+	if err == nil {
+		val := downstream.FieldByName("upstream")
+		upstream, err = valueOf(val)
+		if err != nil {
+			return
+		}
 	}
 
-	for fromKey, toKey := range m {
-		fromField, toField := from.FieldByName(fromKey), to.FieldByName(toKey)
-		if toField.Kind() != fromField.Kind() {
+	for fromKey, toKey := range keymap {
+		from, to := upstream.FieldByName(fromKey), downstream.FieldByName(toKey)
+		if to.Kind() != from.Kind() {
 			return fmt.Errorf("%s(%s) mismatches %s(%s)",
-				fromKey, fromField.Kind(), toKey,
-				toField.Kind())
+				fromKey, from.Kind(), toKey,
+				to.Kind())
 		}
 
-		switch fromField.Kind() {
+		switch from.Kind() {
 
 		/**
 		 * True, False
 		 * Duh
 		 */
 		case reflect.Bool:
-			toField.SetBool(fromField.Bool())
+			to.SetBool(from.Bool())
 			continue
 
 		/**
@@ -58,8 +97,7 @@ func MapValues(_from, _to interface{}, m Map) (err error) {
 		 */
 		case reflect.Int8, reflect.Int16, reflect.Int32,
 			reflect.Int64, reflect.Int:
-
-			toField.SetInt(fromField.Int())
+			to.SetInt(from.Int())
 			continue
 
 		/**
@@ -67,7 +105,7 @@ func MapValues(_from, _to interface{}, m Map) (err error) {
 		 * Duh
 		 */
 		case reflect.String:
-			toField.SetString(fromField.String())
+			to.SetString(from.String())
 			continue
 
 		/**
@@ -78,8 +116,8 @@ func MapValues(_from, _to interface{}, m Map) (err error) {
 		default:
 			// I don't support every type bruv.
 			return fmt.Errorf("unsupported %s(%s), %s(%s)",
-				fromKey, fromField.Kind(), toKey,
-				toField.Kind())
+				fromKey, from.Kind(), toKey,
+				to.Kind())
 		}
 	}
 

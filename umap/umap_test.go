@@ -13,36 +13,36 @@ import (
 
 func TestValueOf(t *testing.T) {
 	val := &struct{}{}
-	actual := valueOf(val).Kind()
-	assert.Equal(t, reflect.Struct,
-		actual)
+	actual, err := valueOf(val)
+	assert.Equal(t, reflect.Struct, actual.Kind())
+	assert.Nil(t, err)
 }
 
-func TestMapValues(t *testing.T) {
-	a := &struct {
+func TestMap(t *testing.T) {
+	type a struct {
 		A int
 		B string
 		C bool
-	}{
-		A: 1,
-		B: "Hello",
-		C: true,
 	}
 
-	b := &struct {
+	type b struct {
+		upstream *a
+
 		A int
 		B string
 		C bool
-	}{}
+	}
 
-	c := Map{
+	upstream := &a{A: 1, B: "Hello", C: true}
+	obj := &b{upstream: upstream}
+	err := Map(obj, KeyMap{
 		"A": "A",
 		"B": "B",
 		"C": "C",
-	}
+	})
 
-	MapValues(a, b, c)
-	assert.Equal(t, a.A, b.A)
-	assert.Equal(t, a.B, b.B)
-	assert.Equal(t, a.C, b.C)
+	assert.Nil(t, err)
+	assert.Equal(t, upstream.A, obj.A)
+	assert.Equal(t, upstream.B, obj.B)
+	assert.Equal(t, upstream.C, obj.C)
 }
