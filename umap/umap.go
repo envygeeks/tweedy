@@ -63,18 +63,18 @@ func valueOf(i interface{}) (v reflect.Value, err error) {
 //		}
 //	}, UpstreamMap)
 func Map(in interface{}, keymap KeyMap) (err error) {
-	var upstream, downstream reflect.Value
-	downstream, err = valueOf(in)
+	var a, b reflect.Value
+	b, err = valueOf(in)
 	if err == nil {
-		val := downstream.FieldByName("upstream")
-		upstream, err = valueOf(val)
+		v := b.FieldByName("upstream")
+		a, err = valueOf(v)
 		if err != nil {
 			return
 		}
 	}
 
 	for fromKey, toKey := range keymap {
-		from, to := upstream.FieldByName(fromKey), downstream.FieldByName(toKey)
+		from, to := a.FieldByName(fromKey), b.FieldByName(toKey)
 		if to.Kind() != from.Kind() {
 			return fmt.Errorf("%s(%s) mismatches %s(%s)",
 				fromKey, from.Kind(), toKey,

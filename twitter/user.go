@@ -7,25 +7,49 @@ package twitter
 import (
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/envygeeks/tweedy/umap"
-	"github.com/sirupsen/logrus"
 )
 
 // User is a user
 type User struct {
-	LikesCount int
+	mapped   bool           // Whether we've mapped upstream
+	upstream *anaconda.User // The upstream we are encapsulating
+	api      *API           // The API we are working with
+
+	/**
+	 * Public
+	 */
+	EMail  string
+	Handle string
+	Name   string
+	UID    int64
+
+	/**
+	 * Counts
+	 * BLOCKED: The TODO requires umap.Map adjustments
+	 * TODO: Move this onto a UserCount
+	 */
 	TweetCount int64
-	upstream   *anaconda.User
-	Handle     string
-	EMail      string
-	Name       string
-	UID        int64
+	LikesCount int
 }
 
 // Likes are likes
 type Likes *[]Tweet
 
+// UserQuery is used in cases where we will query an API
+// that can take either a UID, or a Handle.
+//
+//   func MyFunc(query UserQuery) {
+//     if query.Handle != ""
+//       // Get UID, and do work.
+//     }
+//   }
+type UserQuery struct {
+	Handle string
+	UID    int64
+}
+
 var (
-	userUpstreamMap = umap.Map{
+	userMap = map[string]string{
 		"Email":           "EMail",
 		"StatusesCount":   "TweetCount",
 		"FavouritesCount": "LikesCount",
@@ -35,29 +59,26 @@ var (
 	}
 )
 
-// UserQuery is used in cases where
-// we will query an API that can take
-// either a UID, or a Handle.
-//
-//   func MyFunc(u UserQuery) {
-//     if u.Handle != ""
-//       // Get UID, and do work.
-//     }
-//   }
-type UserQuery struct {
-	Handle string
-	UID    int64
-}
-
-// Setup the user
-func (u *User) Setup() *User {
-	if u.upstream != nil {
-		err := umap.MapValues(u.upstream, u, userUpstreamMap)
-		if err != nil {
-			logrus.Fatalln(err)
+// Init the user
+func (u *User) Init() (err error) {
+	if !u.mapped && u.upstream != nil {
+		err := umap.Map(u, userMap)
+		if err == nil {
+			u.mapped = true
 		}
 	}
 
-	return u
+	return
 }
 
+// NewUser creates a new User
+func NewUser(uu *anaconda.User, a *API) (u *User, err error) {
+	u = &User{}
+	if uu != nil {
+		u.upstream = uu
+	}
+
+	u.api = a
+	err = u.Init()
+	return
+}

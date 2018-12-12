@@ -6,48 +6,14 @@ package twitter
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/url"
-	"os"
 	"strconv"
-
-	"github.com/ChimeraCoder/anaconda"
-	"github.com/sirupsen/logrus"
 )
 
-var (
-	_envKeys = [4]string{
-		"TWITTER_ACCESS_TOKEN",
-		"TWITTER_ACCESS_TOKEN_SECRET",
-		"TWITTER_API_KEY",
-		"TWITTER_API_SECRET",
-	}
+const (
+	tweetlimit = 3200
 )
-
-// GetKeys gets access, and api keys from
-// the current users environment, you can visit
-// Twitters developer.twitter.com to register
-func envKeys() (slice []string, err error) {
-	for _, k := range _envKeys {
-		v, ok := os.LookupEnv(k)
-		if !ok {
-			err = fmt.Errorf("unable to find key %s in env", k)
-			return
-		}
-
-		slice = append(slice, v)
-	}
-
-	return
-}
-
-// API is a wrapper around anaconda.TwitterAPI
-// it simplifies their interface, and gives us an
-// interface that has only what we need.
-type API struct {
-	upstream *anaconda.TwitterApi
-}
 
 // GetFromFile pulls all the Tweets from a file.
 func (a *API) GetFromFile(f string) (t Tweets, err error) {
@@ -63,7 +29,7 @@ func (a *API) GetFromFile(f string) (t Tweets, err error) {
 
 	for _, tweet := range t {
 		tweet.api = a
-		tweet.Setup()
+		tweet.Init()
 	}
 
 	return
@@ -77,15 +43,18 @@ func (a *API) GetFromFile(f string) (t Tweets, err error) {
 // 	GetFromTimeline(&UserQuery{
 //   		Handle: "myTwitterHandle"
 // 	})
-//
-func (a *API) GetFromTimeline(u UserQuery) (tweets Tweets, err error) {
-	user, err := a.GetUser(u)
+func (a *API) GetFromTimeline(uq UserQuery) (Tweets, error) {
+	tweets := Tweets{}
+	seen := map[int64]struct{}{}
+	var last int64
+
+	u, err := a.GetUser(uq)
 	if err != nil {
-		return
+		return Tweets{}, err
 	}
 
-	struid := strconv.FormatInt(user.UID, 10)
-	t, err := a.upstream.GetUserTimeline(url.Values{
+	struid := strconv.FormatInt(u.UID, 10)
+	q := url.Values{
 		"user_id":         []string{struid},
 		"include_rts":     []string{"1"},
 		"exclude_replies": []string{"0"},
@@ -93,84 +62,104 @@ func (a *API) GetFromTimeline(u UserQuery) (tweets Tweets, err error) {
 		"count": []string{
 			"200",
 		},
-	})
-	if err != nil {
-		logrus.Fatalln(err)
 	}
 
-	for _, tt := range t {
-		tweets = append(tweets, (&Tweet{
-			upstream: &tt,
-			api:      a,
-		}).Setup())
+	for {
+		delete(q, "max_id")
+		if last != 0 {
+			strlid := strconv.FormatInt(last, 10)
+			q["max_id"] = []string{
+				strlid,
+			}
+		}
+
+		timeline, err := timeline(a, q)
+		if err != nil {
+			return Tweets{}, err
+		}
+
+		if len(timeline) == 0 {
+			break
+		} else {
+			slen := len(seen)
+			for _, v := range timeline {
+				if _, ok := seen[v.ID]; !ok {
+					tweets = append(tweets, v)
+					seen[v.ID] = struct{}{}
+				}
+			}
+
+			last = tweets[len(tweets)-1].ID
+			if slen == len(seen) || len(seen) >= tweetlimit {
+				break
+			}
+		}
+	}
+
+	return tweets, nil
+}
+
+func timeline(a *API, q url.Values) (t Tweets, err error) {
+	utweets, err := a.upstream.GetUserTimeline(q)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, utweet := range utweets {
+		tweet, err := NewTweet(&utweet, a)
+		if err != nil {
+			break
+		}
+
+		t = append(t, tweet)
 	}
 
 	return
 }
 
+// uByUID gets the user by their UID
 func uByUID(a *API, id int64) (*User, error) {
-	upstream, err := a.upstream.GetUsersShowById(id, url.Values{})
+	q := url.Values{}
+	u, err := a.upstream.GetUsersShowById(id, q)
 	if err != nil {
 		return nil, err
 	}
 
-	u := (&User{
-		upstream: &upstream,
-	}).Setup() // *User
-	return u, nil
+	return NewUser(&u, a)
 }
 
+// uByHandle gets a user based on the username, or
+// handle that's really just whatever you decide to call it
+// because it's not important enough to get upset about
 func uByHandle(a *API, handle string) (*User, error) {
-	upstream, err := a.upstream.GetUsersShow(handle, url.Values{})
+	q := url.Values{}
+	u, err := a.upstream.GetUsersShow(handle, q)
 	if err != nil {
 		return nil, err
 	}
 
-	u := (&User{
-		upstream: &upstream,
-	}).Setup() // *User
-	return u, nil
+	return NewUser(&u, a)
 }
 
 // GetUser gets the user
-func (a *API) GetUser(uq UserQuery) (u *User, err error) {
-	if uq.UID == 0 && uq.Handle != "" {
-		u, err = uByHandle(a, uq.Handle)
+func (a *API) GetUser(q UserQuery) (u *User, err error) {
+	if q.UID == 0 && q.Handle != "" {
+		u, err = uByHandle(a, q.Handle)
 	} else {
-		if uq.UID != 0 {
-			u, err = uByUID(a, uq.UID)
+		if q.UID != 0 {
+			u, err = uByUID(a, q.UID)
 		}
 	}
 
 	return
 }
 
-// Get retrieves a Tweet from the API
-func (a *API) Get(i int64) (*Tweet, error) {
-	logrus.Infof("fetching %d", i)
+// GetTweet retrieves a Tweet from the API
+func (a *API) GetTweet(i int64) (*Tweet, error) {
 	t, err := a.upstream.GetTweet(i, url.Values{})
 	if err != nil {
 		return nil, err
 	}
 
-	return (&Tweet{
-		upstream: &t,
-		api:      a,
-	}).Setup(), nil
-}
-
-// New gets the keys, and then returns an API
-// created by Anaconda.  If you wish to do more advanced
-// stuff than what I'm doing, hit up their docs
-func New() (*API, error) {
-	k, err := envKeys()
-	if err != nil {
-		return nil, err
-	}
-
-	a, b, c, d := k[0], k[1], k[2], k[3]
-	upstream := anaconda.NewTwitterApiWithCredentials(a, b, c, d)
-	return &API{
-		upstream: upstream,
-	}, nil
+	return NewTweet(&t, a)
 }

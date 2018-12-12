@@ -17,45 +17,62 @@ import (
 // We don't care about anything but the specific
 // Tweet ID that we plan to delete
 type Tweet struct {
-	upstream     *anaconda.Tweet
+	mapped   bool            // Whether we've mapped
+	upstream *anaconda.Tweet // Encapsulated upstream
+	api      *API            // The API instance
+
+	/**
+	 * Public
+	 */
 	CreatedAt    time.Time `json:"-"`
-	FullText     string    `json:"full_text"`
 	CreatedAtStr string    `json:"created_at"`
+	FullText     string    `json:"full_text"`
 	ID           int64     `json:",string"`
-	api          *API
 }
 
 var (
-	tweetUpstreamMap = umap.Map{
+	tweetTimefmt = time.RubyDate // For CreatedAtStr
+	tweetMap     = map[string]string{
 		"FullText":  "FullText",
 		"CreatedAt": "CreatedAtStr",
 		"Id":        "ID",
 	}
 )
 
-// Tweets are Tweet
+// Tweets is obvious
 type Tweets []*Tweet
 
-// Setup does constructor stuff.
-func (t *Tweet) Setup() *Tweet {
-	var err error
-
-	if t.upstream != nil {
-		err = umap.MapValues(t.upstream, t, tweetUpstreamMap)
+// Init setups some stuff
+// this is only necessary if you do &Tweet{} instead of
+// using NewTweet, this mostly only happens in the
+// case of serialization
+func (t *Tweet) Init() (err error) {
+	var emptyT time.Time
+	if !t.mapped && t.upstream != nil {
+		err = umap.Map(t, tweetMap)
 		if err == nil {
-			t.CreatedAt, err = t.upstream.
-				CreatedAtTime()
+			t.mapped = true
 		}
-	} else {
-		t.CreatedAt, err = time.Parse(time.RubyDate,
+	}
+
+	if err == nil && t.CreatedAtStr != "" && t.CreatedAt == emptyT {
+		t.CreatedAt, err = time.Parse(tweetTimefmt,
 			t.CreatedAtStr)
 	}
 
-	if err != nil {
-		logrus.Fatalln(err)
+	return
+}
+
+// NewTweet creates a new Tweet
+func NewTweet(t *anaconda.Tweet, a *API) (*Tweet, error) {
+	tweet := &Tweet{}
+	if t != nil {
+		tweet.upstream = t
 	}
 
-	return t
+	tweet.api = a
+	err := tweet.Init()
+	return tweet, err
 }
 
 // IsRetweet tells if Retweet
