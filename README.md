@@ -7,11 +7,11 @@ Twitter Delete Yourself is a Go application for deleting your Tweets, while pres
 
 ## Usage
 
-### Get an API Key
+### 1. Get an API Key
 
 Visit https://developer.twitter.com, and then sign in, and go to `Username` > Apps | Create an App, and fill in the form in as much detail as possible. Be prepared to wait a day or two, for me it took an hour (as I already had an app,) for some people it might take longer, so don't get upset if you don't get approved instantly.
 
-### Set your API Key
+### 2. Set your API Key
 
 ```
 export TWITTER_TOKEN=""
@@ -20,7 +20,7 @@ export TWITTER_SECRET_KEY=""
 export TWITTER_KEY=""
 ```
 
-### Download
+### 3. Download
 #### Binary
 
 * Visit https://github.com/envygeeks/tweedy/releases/latest
@@ -30,7 +30,6 @@ export TWITTER_KEY=""
 
 ```
 mv ~/Downloads/<Binary> /usr/local/bin/tweedy
-tweedy --user=<user>
 ```
 
 #### Source
@@ -39,5 +38,11 @@ tweedy --user=<user>
 mkdir -p tweedy && cd tweedy
 git clone https://github.com/envygeeks/tweedy.git .
 go mod download
+```
+
+### 4. Use
+
+```
+tweedy
 go run . --help
 ```
