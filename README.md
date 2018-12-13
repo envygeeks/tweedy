@@ -21,7 +21,7 @@ export TWITTER_SECRET_KEY=""
 export TWITTER_KEY=""
 ```
 
-### 3. Download
+### 2. Download
 #### Binary
 
 * Visit https://github.com/envygeeks/tweedy/releases/latest
@@ -33,7 +33,7 @@ export TWITTER_KEY=""
 mv ~/Downloads/<Binary> /usr/local/bin/tweedy
 ```
 
-### 4. Use
+### 3. Use
 
 ```
 tweedy --user=<Handle> \
