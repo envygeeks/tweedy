@@ -12,7 +12,8 @@ import (
 	"time"
 
 	"github.com/ChimeraCoder/anaconda"
-	"github.com/envygeeks/tweedy/twitter"
+	"github.com/envygeeks/tweedy/tweedy"
+	"github.com/envygeeks/tweedy/tweedy/auth"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -21,8 +22,9 @@ type cli struct {
 	From    int
 	File    string
 	User    string
-	Silent  bool
+	DryRun  bool
 	Verbose bool
+	Silent  bool
 	Keep    int
 }
 
@@ -39,6 +41,7 @@ func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
 	mainCmd.Flags().IntVarP(&args.From, "from", "r", 0, "Delete Tweets from ID")
 	mainCmd.Flags().BoolVarP(&args.Verbose, "verbose", "1", false, "Verbose output")
+	mainCmd.Flags().BoolVarP(&args.DryRun, "dry-run", "d", false, "Disable destructive actions")
 	mainCmd.Flags().StringVarP(&args.User, "user", "u", "", "User handle, or UID")
 	mainCmd.Flags().IntVarP(&args.Keep, "keep", "k", 3, "Days to keep")
 	mainCmd.Flags().StringVarP(&args.File, "file", "f",
@@ -49,7 +52,7 @@ func init() {
 // We decide whether to throw based on the type of
 // error, exp if it's a simple permission or
 // missing error, we will keep going.
-func okT(e error, t *twitter.Tweet) (ok bool) {
+func check(e error, t *tweedy.Tweet) (ok bool) {
 	if e == nil {
 		return true
 	}
@@ -78,8 +81,8 @@ func okT(e error, t *twitter.Tweet) (ok bool) {
 }
 
 // Wrap around okT and ship the first Tweet
-func okTs(e error, t twitter.Tweets) (ok bool) {
-	return okT(e, t[0])
+func checkall(e error, t tweedy.Tweets) bool {
+	return check(e, t[0])
 }
 
 func file() (f string) {
@@ -88,7 +91,8 @@ func file() (f string) {
 		logrus.Fatalln(err)
 	} else {
 		if _, err = os.Stat(f); os.IsNotExist(err) {
-			logrus.Fatalf("unable to find the file %s", args.File)
+			msg := "unable to find the file %s"
+			logrus.Fatalf(msg, args.File)
 		}
 	}
 
@@ -105,7 +109,7 @@ func keep() (i int) {
 }
 
 // loopOn loops on the Tweets and deletes
-func loopOn(deleteDate time.Time, from int64, t []*twitter.Tweet) {
+func loopOn(deleteDate time.Time, from int64, t []*tweedy.Tweet) {
 	for _, tweet := range t {
 		c := tweet.CreatedAt
 		if c.After(deleteDate) || (from > 0 && from > tweet.ID) {
@@ -121,7 +125,7 @@ func loopOn(deleteDate time.Time, from int64, t []*twitter.Tweet) {
 
 		if tweet.IsRetweet() {
 			ok := false
-			if okT(tweet.Unretweet(), tweet) {
+			if check(tweet.UnRetweet(), tweet) {
 				ok = true
 			}
 
@@ -131,30 +135,47 @@ func loopOn(deleteDate time.Time, from int64, t []*twitter.Tweet) {
 				continue
 			}
 		} else {
-			if okT(tweet.Delete(), tweet) {
+			if check(tweet.Delete(), tweet) {
 				continue
 			}
 		}
 	}
 }
 
-func api() (api *twitter.API) {
-	api, err := twitter.New()
+func api() (api *tweedy.API) {
+	t, k := &auth.Tokens{}, &auth.Keys{}
+	err := t.FromEnv()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = k.FromEnv()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	o := &tweedy.Opts{
+		Tokens: t,
+		DryRun: args.DryRun,
+		Keys:   k,
+	}
+
+	a, err := tweedy.New(o)
 	if err != nil {
 		logrus.Fatalln(err)
 	}
 
-	return
+	return a
 }
 
 // runWithFile is the runCmd for
 // the command when ran with --file=tweets.json
 // as it has it's own logic.
 func runCmd(*cobra.Command, []string) {
-	sL()
+	setupLogging()
 
 	var (
-		tweets twitter.Tweets
+		tweets tweedy.Tweets
 		err    error
 	)
 
@@ -166,12 +187,12 @@ func runCmd(*cobra.Command, []string) {
 		if u := args.User; u != "" {
 			if uid, fail := strconv.Atoi(u); fail == nil {
 				tweets, err = api.GetFromTimeline(
-					twitter.UserQuery{
+					tweedy.UserQuery{
 						UID: int64(uid),
 					})
 			} else {
 				tweets, err = api.GetFromTimeline(
-					twitter.UserQuery{
+					tweedy.UserQuery{
 						Handle: u,
 					})
 			}
@@ -190,7 +211,7 @@ func runCmd(*cobra.Command, []string) {
 		tweets)
 }
 
-func sL() {
+func setupLogging() {
 	logrus.SetLevel(logrus.WarnLevel)
 	if args.Verbose {
 		logrus.SetLevel(logrus.DebugLevel)

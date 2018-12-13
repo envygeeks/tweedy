@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // that can be found in the LICENSE file.
 
-package twitter
+package tweedy
 
 import (
 	"github.com/ChimeraCoder/anaconda"
@@ -11,9 +11,13 @@ import (
 
 // User is a user
 type User struct {
-	mapped   bool           // Whether we've mapped upstream
-	upstream *anaconda.User // The upstream we are encapsulating
-	api      *API           // The API we are working with
+	/**
+	 * Private
+	 */
+	mapped   bool
+	upstream *anaconda.User
+	opts     *Opts
+	api      *API
 
 	/**
 	 * Public
@@ -79,6 +83,7 @@ func NewUser(uu *anaconda.User, a *API) (u *User, err error) {
 	}
 
 	u.api = a
+	u.opts = a.opts
 	err = u.Init()
 	return
 }

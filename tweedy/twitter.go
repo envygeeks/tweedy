@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // that can be found in the LICENSE file.
 
-package twitter
+package tweedy
 
 import (
 	"encoding/json"
@@ -29,6 +29,7 @@ func (a *API) GetFromFile(f string) (t Tweets, err error) {
 
 	for _, tweet := range t {
 		tweet.api = a
+		tweet.opts = a.opts
 		tweet.Init()
 	}
 

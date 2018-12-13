@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // that can be found in the LICENSE file.
 
-package twitter
+package tweedy
 
 import (
 	"strings"
@@ -17,9 +17,13 @@ import (
 // We don't care about anything but the specific
 // Tweet ID that we plan to delete
 type Tweet struct {
-	mapped   bool            // Whether we've mapped
-	upstream *anaconda.Tweet // Encapsulated upstream
-	api      *API            // The API instance
+	/**
+	 * Private
+	 */
+	mapped   bool
+	upstream *anaconda.Tweet
+	opts     *Opts
+	api      *API
 
 	/**
 	 * Public
@@ -71,6 +75,7 @@ func NewTweet(t *anaconda.Tweet, a *API) (*Tweet, error) {
 	}
 
 	tweet.api = a
+	tweet.opts = a.opts
 	err := tweet.Init()
 	return tweet, err
 }
@@ -80,8 +85,8 @@ func (t *Tweet) IsRetweet() bool {
 	return strings.HasPrefix(t.FullText, "RT ")
 }
 
-// Unretweet a Tweet
-func (t *Tweet) Unretweet() (err error) {
+// UnRetweet a Tweet
+func (t *Tweet) UnRetweet() (err error) {
 	_, err = t.api.upstream.UnRetweet(t.ID, true)
 	if err == nil {
 		c := t.CreatedAt
