@@ -5,25 +5,39 @@
 
 Twitter Delete Yourself is a Go application for deleting your Tweets, while preserving part of your history for n amount of time.  It also supports consuming a Twitter JSON backup once you convert the `tweet.js` to `tweet.json` by opening it up, removing the variable, and leaving only the array.
 
-
 ## Usage
 
+### Get an API Key
+
+Visit https://developer.twitter.com, and then sign in, and go to `Username` > Apps | Create an App, and fill in the form in as much detail as possible. Be prepared to wait a day or two, for me it took an hour (as I already had an app,) for some people it might take longer, so don't get upset if you don't get approved instantly.
+
+### Set your API Key
+
 ```
-Tweedy deletes your Tweets, Retweets, and Likes
-
-Usage:
-  tweedy [flags]
-
-Flags:
-  -f, --file string   Tweets JSON file
-  -r, --from int      Delete Tweets from ID
-  -h, --help          help for tweedy
-  -k, --keep int      Days to keep (default 3)
-  -0, --silent        Silent output (Warnings only) (default true)
-  -u, --user string   The user
-  -1, --verbose       Verbose output
+export TWITTER_TOKEN=""
+export TWITTER_TOKEN_SECRET=""
+export TWITTER_SECRET_KEY=""
+export TWITTER_KEY=""
 ```
 
-### Running
+### Download
+#### Binary
 
-You can either visit https://github.com/envygeeks/tweedy/releases/latest, and download the latest binary build (on macOS they are signed,) or you can install `go` and do `go run . --help` and go from there.  You will also need to signup for the Twitter API through https://developer.twitter.com, and then get generate a key for your account.  Once you have done that you can set `TWITTER_ACCESS_TOKEN`, `TWITTER_ACCESS_TOKEN_SECRET`, `TWITTER_API_KEY`, and `TWITTER_API_SECRET`, and just run the binary, and you'll be good to go.  If Twitter asks for clarification during the app creation process let them know that are "trying to delete your Tweets using https://github.com/envygeeks/tweedy so you need an API key", most of the time they will approve it.
+* Visit https://github.com/envygeeks/tweedy/releases/latest
+* Download a binary
+  * Make sure it matches your operating system
+  * Make sure it matches your arch
+
+```
+mv ~/Downloads/<Binary> /usr/local/bin/tweedy
+tweedy --user=<user>
+```
+
+#### Source
+
+```
+mkdir -p tweedy && cd tweedy
+git clone https://github.com/envygeeks/tweedy.git .
+go mod download
+go run . --help
+```
