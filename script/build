@@ -13,12 +13,16 @@ docker pull golang:"$version"
 
 docker rm -f "$name" || true
 docker run --name="$name" --env=CGO_ENABLE=0 \
-  --env=GO111MODULE=on --volume="$PWD:/.go/src/$repo" \
-  --volume="$PWD/bins:/bins" --workdir="/.go/src/$repo" --detach --interactive \
+  --env=GO111MODULE=on --volume="$PWD/bins:/bins" \
+  --workdir="/.go/src/$repo" --detach --interactive \
   --tty golang:"$version" sh
 
+docker exec "$name" mkdir -p "/.go/src/$repo"
+docker cp . "$name":"/.go/src/$repo"
 if [[ "$1" ]]; then
-  docker exec "$name" git checkout "$1"
+  docker exec "$name" git reset HEAD --hard
+  docker exec "$name" git \
+    checkout "$1"
 fi
 
 docker exec "$name" env GOOS=linux   GOARCH=amd64 go build -v -ldflags '-s -w' -o "/bins/$name-linux-amd64"
