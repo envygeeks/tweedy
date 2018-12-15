@@ -17,6 +17,10 @@ docker run --name="$name" --env=CGO_ENABLE=0 \
   --volume="$PWD/bins:/bins" --workdir="/.go/src/$repo" --detach --interactive \
   --tty golang:"$version" sh
 
+if [[ "$1" ]]; then
+  docker exec "$name" git checkout "$1"
+fi
+
 docker exec "$name" env GOOS=linux   GOARCH=amd64 go build -v -ldflags '-s -w' -o "/bins/$name-linux-amd64"
 docker exec "$name" env GOOS=darwin  GOARCH=amd64 go build -v -ldflags '-s -w' -o "/bins/$name-darwin-amd64"
 docker exec "$name" env GOOS=windows GOARCH=amd64 go build -v -ldflags '-s -w' -o "/bins/$name-windows-amd64"
