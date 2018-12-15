@@ -58,6 +58,7 @@ site/
 # --
 # Other
 # --
+/bins
 /build
 /binaries
 /priv
