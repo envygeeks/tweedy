@@ -5,42 +5,49 @@
 [[ "$DEBUG" ]] && set -x
 set -e
 
-b="bins"; d="$PWD"
-v=$(go version | awk '{ print $3 }' | sed -e 's/^go//')
-r=$(cat go.mod | grep module | sed -e 's/^module[[:space:]]*//')
-n="$(basename "$d")"
+build_to="bins"
+commit=$(git rev-parse HEAD)
+version=$(git describe --abbrev=0)
+go_version=$(go version | awk '{ print $3 }' | sed -e 's/^go//')
+repo=$(cat go.mod | grep module | sed -e 's/^module[[:space:]]*//')
+user=$(echo $repo | awk -F/ '{ print $2 }')
+name=$(echo $repo | awk -F/ '{ print $3 }')
+url="https://github.com"
 
-docker pull golang:"$v"
-rm -r "$d/$b" && mkdir -p "$d/$b"
-docker rm -f "$n" || true
+docker pull golang:"${go_version}"
+rm -r "${PWD}/${build_to}" && mkdir -p "${PWD}/${build_to}"
+docker rm -f "${name}" || true
 
-docker run --name="$n" --env=CGO_ENABLE=0 \
-  --env=GO111MODULE=on --volume="$d/$b:/$b" \
-  --workdir="/.go/src/$r" --detach --interactive \
-  --tty golang:"$v" sh
+docker run --name="${name}" --env=CGO_ENABLE=0 \
+  --env=GO111MODULE=on --volume="${PWD}/${build_to}:/${build_to}" \
+  --workdir="/.go/src/${repo}" --detach --interactive \
+  --tty golang:"${go_version}" sh
 
-docker exec "$n" mkdir -p "/.go/src/$r"
-docker cp . "$n":"/.go/src/$r"
+docker exec "${name}" mkdir -p "/.go/src/${repo}"
+docker cp . "${name}":"/.go/src/${repo}"
 if [[ "$1" ]]; then
-  docker exec "$n" git reset HEAD --hard
-  docker exec "$n" git \
+  docker exec "${name}" git reset HEAD --hard
+  docker exec "${name}" git \
     checkout "$1"
 fi
 
 build() {
-  docker exec "$n" env GOOS=$1 GOARCH=$2 \
-    go build -v -ldflags \
-      '-s -w' -o $3
+  docker exec "${name}" env GOOS="${1}" GOARCH="${2}" \
+    go build -v -ldflags "-s -w \
+      -X ${repo}/cmd.version=${version} \
+      -X ${repo}/cmd.url=${url}/${repo} \
+      -X ${repo}/cmd.commit=${commit}" \
+        -o "/${build_to}/${name}-${1}-${2}"
 }
 
-build linux   amd64 "/$b/$n-linux-amd64"
-build darwin  amd64 "/$b/$n-darwin-amd64"
-build windows amd64 "/$b/$n-windows-amd64"
-build linux   arm64 "/$b/$n-linux-arm64"
-build linux   arm   "/$b/$n-linux-arm"
+build linux amd64
+build darwin amd64
+build windows amd64
+build linux arm64
+build linux arm
 
-docker rm -f "$n"
+docker rm -f "${name}"
 if [[ "$SIGN" != "false" ]] && [[ "$MACOS_DEVELOPER_ID" ]]; then
   codesign -f -s "$MACOS_DEVELOPER_ID" \
-    "$d/$b/$n-darwin"-*
+    "${build_to}/${name}-darwin"-*
 fi
