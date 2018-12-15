@@ -4,15 +4,9 @@
 
 package tweedy
 
-import (
-	"github.com/envygeeks/tweedy/tweedy/auth"
-)
-
 // Opts hold the opts that we
 // pass between instances of Tweet,
 // API, and User, for stuff
 type Opts struct {
-	Keys   *auth.Keys
-	Tokens *auth.Tokens
-	DryRun bool
+	Test bool
 }

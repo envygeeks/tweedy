@@ -6,6 +6,7 @@ package tweedy
 
 import (
 	"github.com/ChimeraCoder/anaconda"
+	"github.com/envygeeks/tweedy/tweedy/auth"
 )
 
 // API is a wrapper around anaconda.TwitterAPI it
@@ -20,9 +21,14 @@ type API struct {
 // created by Anaconda.  If you wish to do more advanced
 // stuff than what I'm doing, hit up their docs
 func New(opts *Opts) (*API, error) {
-	k, sk := opts.Keys.Key, opts.Keys.SecretKey
-	t, st := opts.Tokens.Token, opts.Tokens.TokenSecret
-	a := anaconda.NewTwitterApiWithCredentials(t, st, k, sk)
-	api := &API{upstream: a, opts: opts}
+	a, err := auth.New()
+	if err != nil {
+		return nil, err
+	}
+
+	k, sk := a.Keys.Key, a.Keys.SecretKey
+	t, st := a.Tokens.Token, a.Tokens.TokenSecret
+	u := anaconda.NewTwitterApiWithCredentials(t, st, k, sk)
+	api := &API{upstream: u, opts: opts}
 	return api, nil
 }
